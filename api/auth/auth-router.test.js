@@ -1,6 +1,7 @@
 const request = require("supertest");
 const server = require("../server");
 const db = require("../data/db-config");
+const bcrypt = require("bcrypt");
 
 beforeAll(async () => {
   await db.migrate.rollback();
@@ -64,16 +65,20 @@ describe("/auth", () => {
         expect(res.body).toHaveProperty("user_id");
       });
 
-      it("responds with hashed password", () => {
-        expect(res.body.user_password).not.toEqual(user1.user_password);
-      });
-
       it.todo(
         "adds user to the database"
         //, ()=>{
 
         //}
       );
+      it("adds user to database with hashed password", async () => {
+        const dbUser = await db("users")
+          .where({ user_username: user1.user_username })
+          .first();
+        expect(
+          bcrypt.compareSync(user1.user_password, dbUser.user_password)
+        ).toBeTruthy();
+      });
     }); //Happy Path
 
     //\\\\\\\\\\\\\\\\\\\  \\\\\\\\\\\\\\\\\\\\\
