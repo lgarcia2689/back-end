@@ -45,7 +45,7 @@ const { user_email, ...userNoEmail } = user1;
 
 describe("/auth", () => {
   //\\\\\\\\\\\\\\\\\\\ REGISTER ENDPOINT \\\\\\\\\\\\\\\\\\\\\
-  describe(`[POST] ${registerEP}`, () => {
+  describe(`[POST] ${loginEP}`, () => {
     describe(`Happy Path`, () => {
       let res;
       beforeEach(async () => {
@@ -80,7 +80,7 @@ describe("/auth", () => {
 
     describe(`Sad Path: Bad inputs`, () => {
       describe(`Bad Username`, () => {
-        describe(`Duplicate Username`, () => {
+        describe(`Username not registered`, () => {
           let res;
           const userSameName = { ...user2, user_username: user1.user_username };
           beforeEach(async () => {
@@ -97,12 +97,12 @@ describe("/auth", () => {
           it("responds with proper error", () => {
             expect(res.body.message).toMatch(/username unavailable/i);
           });
-        }); //Duplicate Username
+        }); //Username not registered
 
         describe(`Missing Username`, () => {
           let res;
           beforeEach(async () => {
-            res = await request(server).post(userNoName);
+            res = await request(server).post(registerEP).send(userNoName);
           });
 
           it("responds with 400", () => {
@@ -137,7 +137,7 @@ describe("/auth", () => {
         describe(`Missing Password`, () => {
           let res;
           beforeEach(async () => {
-            res = await request(server).post(userNoPwd);
+            res = await request(server).post(registerEP).send(userNoPwd);
           });
 
           it("responds with 400", () => {
@@ -207,7 +207,8 @@ describe("/auth", () => {
           let res;
           const userBadEmail = { ...user1, user_email: user3.user_email };
           beforeEach(
-            async () => (res = await request(server).post(userBadEmail))
+            async () =>
+              (res = await request(server).post(registerEP).send(userBadEmail))
           );
 
           it("responds with 400", async () => {
@@ -219,6 +220,140 @@ describe("/auth", () => {
           });
         }); //Email Contains Characters
       }); //Bad Email
+    }); //Sad Path: Bad inputs
+  }); //[POST] ${loginEP}
+
+  //\\\\\\\\\\\\\\\\\\\ LOGIN ENDPOINT \\\\\\\\\\\\\\\\\\\\\
+
+  describe(`[POST] ${loginEP}`, () => {
+    describe(`Happy Path`, () => {
+      let res;
+      beforeEach(async () => {
+        await request(server).post(registerEP).send(user1);
+      });
+      beforeEach(async () => {
+        res = await request(server).post(loginEP).send(user1);
+      });
+
+      it("responds with 200", () => {
+        expect(res.status).toEqual(200);
+      });
+
+      it("responds with username", () => {
+        expect(res.body.message).toBe(`Welcome, ${user1.user_username}`);
+      });
+
+      it("responds with token", () => {
+        expect(res.body).toHaveProperty("token");
+      });
+
+      it.todo(
+        "responds with token containing username and id"
+        //,async ()=>{
+
+        //}
+      );
+    }); //Happy Path
+
+    //\\\\\\\\\\\\\\\\\\\  \\\\\\\\\\\\\\\\\\\\\
+    // endpoints, username not registered
+    describe(`Sad Path: Bad inputs`, () => {
+      describe(`Bad Username`, () => {
+        describe(`Username not registered`, () => {
+          let res;
+          beforeEach(async () => {
+            res = await request(server).post(loginEP).send(user1);
+          });
+
+          it("responds with 400", () => {
+            expect(res.status).toEqual(400);
+          });
+
+          it("responds with proper error", () => {
+            expect(res.body.message).toMatch(/invalid credentials/i);
+          });
+        }); //Username not registered
+
+        describe(`Missing Username`, () => {
+          let res;
+          beforeEach(async () => {
+            await request(server).post(registerEP).send(user1);
+          });
+          beforeEach(async () => {
+            res = await request(server).post(loginEP).send(user1);
+          });
+
+          it("responds with 400", () => {
+            expect(res.status).toEqual(400);
+          });
+
+          it("responds with proper error", () => {
+            expect(res.body.message).toMatch(/username required/i);
+          });
+        }); //Missing Username
+
+        describe(`Username Contains Characters Other [a-z0-9_-]`, () => {
+          let res;
+          beforeEach(async () => {
+            await request(server).post(registerEP).send(user1);
+          });
+          const userBadName = { ...user1, user_username: user3.user_username };
+          beforeEach(
+            async () =>
+              (res = await request(server).post(loginEP).send(userBadName))
+          );
+
+          it("responds with 400", async () => {
+            expect(res.status).toEqual(400);
+          });
+
+          it("responds with proper error", () => {
+            expect(res.body.message).toMatch(/invalid credentials/i);
+          });
+        }); //Username Contains Characters
+      }); //Bad Username
+
+      //\\\\\\\\\\\\\\\\\\\  \\\\\\\\\\\\\\\\\\\\\
+
+      describe(`Bad Password`, () => {
+        describe(`Missing Password`, () => {
+          let res;
+          beforeEach(async () => {
+            await request(server).post(registerEP).send(user1);
+          });
+          beforeEach(async () => {
+            res = await request(server).post(loginEP).send(userNoPwd);
+          });
+
+          it("responds with 400", () => {
+            expect(res.status).toEqual(400);
+          });
+
+          it("responds with proper error", () => {
+            expect(res.body.message).toMatch(/password required/i);
+          });
+        }); //Missing Password
+
+        describe(`Password does not match`, () => {
+          let res;
+          const userBadPwd = { ...user1, user_Password: user3.user_Password };
+          beforeEach(async () => {
+            await request(server).post(registerEP).send(user1);
+          });
+          beforeEach(
+            async () =>
+              (res = await request(server).post(loginEP).send(userBadPwd))
+          );
+
+          it("responds with 400", async () => {
+            expect(res.status).toEqual(400);
+          });
+
+          it("responds with proper error", () => {
+            expect(res.body.message).toMatch(/invalid credentials/i);
+          });
+        }); //Password Too Short
+      }); //Bad Password
     }); //Sad Path: Bad inputs
   }); //[POST] ${register}
 }); ///auth
